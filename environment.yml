@@ -1,0 +1,16 @@
+name: covid
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python
+  - matplotlib
+  - pip
+  - scipy
+  - seaborn
+  - numpy
+  - ipython
+  - pandas
+  - dash
+  - blas[build=openblas]
+prefix: /home/digitalpig/.conda/envs/covid
