@@ -114,8 +114,6 @@ us_populations = us_pop("./data/states_population.csv")
 norm_df = normalize_testing(raw_testing, us_populations)
 
 introduction = """
-# COVID-19 Tests per Capita in Different States in US
-
 ## Introductions
 
 [COVID-19](https://www.who.int/emergencies/diseases/novel-coronavirus-2019) is declared by WHO as pandemic. It is affecting almost
@@ -157,7 +155,7 @@ Copyright 2020 by Zhenqing Li
 
 app.layout = html.Div(
     [
-        dcc.Markdown(introduction),
+        html.H2("COVID-19 Testing per Million Population by States"),
         html.Label("Select States", style={"fontWeight": "bold"}),
         dcc.Dropdown(
             id="select-states",
@@ -168,6 +166,7 @@ app.layout = html.Div(
         dcc.Graph(id="time-series-chart"),
         # Hidden div inside the app that stores the intermediate value
         html.Div(id="intermediate-value", style={"display": "none"}),
+        dcc.Markdown(introduction),
     ]
 )
 
