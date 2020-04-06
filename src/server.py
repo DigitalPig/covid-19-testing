@@ -68,17 +68,38 @@ STATES_SEL = [
 ]
 
 
-def curr_test_ts_states(url: str) -> pd.DataFrame:
+def download_df(url: str) -> pd.DataFrame:
+    """
+    Download the CSV file from COVIDTracker project
+    """
+    states_daily = pd.read_csv(url)
+    states_daily["date"] = pd.to_datetime(states_daily["date"], format="%Y%m%d")
+    return states_daily
+
+
+def curr_test_ts_states(daily: pd.DataFrame) -> pd.DataFrame:
     """
     This function is to read the current testing from https://covidtracking.com/api/
     and return the pandas dataframe
     """
-    states_daily = pd.read_csv(url)
-    states_daily["date"] = pd.to_datetime(states_daily["date"], format="%Y%m%d")
-    states_total_by_dates = states_daily.pivot_table(
+    states_total_by_dates = daily.pivot_table(
         index="date", columns="state", values="totalTestResults"
     )
     return states_total_by_dates
+
+
+def pos_rate(test_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    This utility function calculates positive rate among all tests conducted so far
+    """
+    rate_df = test_df.copy()
+    rate_df["pos_rate"] = (
+        rate_df["positive"] / (rate_df["positive"] + rate_df["negative"]) * 100
+    )
+    rate_df_final = rate_df.pivot_table(
+        index="date", columns="state", values="pos_rate"
+    )
+    return rate_df_final
 
 
 # Read the US population table
@@ -109,9 +130,12 @@ def normalize_testing(test_df: pd.DataFrame, pop_df: Dict[str, int]) -> pd.DataF
     return test_df_norm_by_pop
 
 
-raw_testing = curr_test_ts_states("http://covidtracking.com/api/states/daily.csv")
+raw_data = download_df("http://covidtracking.com/api/states/daily.csv")
+raw_testing = curr_test_ts_states(raw_data)
 us_populations = us_pop("./data/states_population.csv")
 norm_df = normalize_testing(raw_testing, us_populations)
+pos_rate_df = pos_rate(raw_data)
+
 
 introduction = """
 ## Introductions
@@ -123,13 +147,13 @@ The virus starts human-to-human transmission in Wuhan, China. After almost 2 mon
 activities, China starts to see the lights from the end of tunnel, with a huge cost. The virus also spreads to S.Korea and Japan. S.Korea
 has an initial exponetial growth of the confirmed cases, but it is quickly brought under the control. Besides, it is also very impressive that S.Korean government achieves this without an extensive lockdown the country or shutdown the border. On this awesome chart made by Financial Times, you can see that S.Korean has a truly "flatterned" curve.
 
-![FT COVID-19 cases by time](https://www.ft.com/__origami/service/image/v2/images/raw/http%3A%2F%2Fcom.ft.imagepublish.upp-prod-us.s3.amazonaws.com%2F0d6318d6-71fc-11ea-95fe-fcd274e920ca?fit=scale-down&quality=highest&source=next&width=1260)
+![FT COVID-19 cases by time](https://www.ft.com/__origami/service/image/v2/images/raw/http%3A%2F%2Fcom.ft.imagepublish.upp-prod-us.s3.amazonaws.com%2F290098a0-777b-11ea-af44-daa3def9ae03?fit=scale-down&quality=highest&source=next&width=1260)
 
 ## How do S.Koreans achieve this?
 
 Testing! Test as many as you can, and tract their contacts and test those contacts as soon as possible. By doing so, you are able to identify any potential contagious people at the early stage and stop healthy people to contract the virus.
 
-## Why we need a fast test?
+## Why we need fast testing?
 
 **Testing and Tracing** seems to be an effective method for a society that wants to have a healthy balance between controlling the virus
 and minimizing the impact to the economy.
@@ -137,7 +161,7 @@ and minimizing the impact to the economy.
 What about the US? How do we do in terms of coronavirus testing? Can we grip the coronavirus as soon as we can like S. Korea
 without huge impact to the economy?
 
-If we want to do that, ramping up the test is the number 1 issue. I made this quick Dash application to give you a better idea about how many tests are conducted currently in your states and what the number looks like comparing to S.Korean.
+If we want to do that, ramping up the test is the number 1 issue. I made this quick Dash application to give you a better idea about how many tests are conducted currently in your states and what the number looks like comparing to S.Korean (Currently level at [8,920 per million people with positive rate of 2.2%](https://en.wikipedia.org/wiki/COVID-19_testing#Testing_statistics_by_country)).
 
 ### Data Source
 We get the testing date from [Covid Tracking Project](https://covidtracking.com/api/) and the US population by states
@@ -145,7 +169,7 @@ from [US Census Bureau](https://www.census.gov/data/tables/time-series/demo/pope
 aware that not all states report the number of testing cases with the same quality. Please refer to the data source
 for the data quality assessment.
 
-### Where to contribute
+### How to contribute?
 Code can be found on [Github](https://github.com/DigitalPig/covid-19-testing).
 
 Copyright 2020 by Zhenqing Li
@@ -164,6 +188,7 @@ app.layout = html.Div(
             multi=True,
         ),
         dcc.Graph(id="time-series-chart"),
+        dcc.Graph(id="positive-rate-chart"),
         # Hidden div inside the app that stores the intermediate value
         html.Div(id="intermediate-value", style={"display": "none"}),
         dcc.Markdown(introduction),
@@ -193,6 +218,32 @@ def gen_figure(states: List[str]) -> go:
         title="COVID-19 Testing Conducted per Capita",
         xaxis_title="Date",
         yaxis_title="Number of Tests per Million People",
+    )
+    return fig
+
+
+@app.callback(
+    Output(component_id="positive-rate-chart", component_property="figure"),
+    [Input(component_id="select-states", component_property="value")],
+)
+def gen_pos_rate_figure(states: List[str]) -> go:
+    """
+    Using the input normalized dataframe and the list states to generate the graph
+    """
+    fig = go.Figure()
+    for state in states:
+        fig.add_trace(
+            go.Scatter(
+                x=pos_rate_df.index,
+                y=pos_rate_df.loc[:, state],
+                mode="lines+markers",
+                name=state,
+            )
+        )
+    fig.update_layout(
+        title="COVID-19 Postive Rate by State",
+        xaxis_title="Date",
+        yaxis_title="Positive Rate (%)",
     )
     return fig
 
