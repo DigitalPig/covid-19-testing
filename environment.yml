@@ -5,10 +5,10 @@ channels:
 dependencies:
   - python=3
   - pip
-  - scipy=1.4.1
-  - numpy=1.18.1
-  - pandas=1.0.3
-  - dash=1.9.1
+  - scipy=1.11.2
+  - numpy=1.26.0
+  - pandas=2.1.1
+  - dash=2.13.0
   - blas[build=openblas]
   - black
-  - gunicorn=20.0.4
+  - gunicorn=21.2.0

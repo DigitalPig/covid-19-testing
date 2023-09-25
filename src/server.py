@@ -1,7 +1,7 @@
 from typing import Dict, List, Tuple
 import dash
-import dash_core_components as dcc
-import dash_html_components as html
+from dash import dcc
+from dash import html
 import pandas as pd
 import plotly.graph_objects as go
 from dash.dependencies import Input, Output
@@ -93,9 +93,7 @@ def pos_rate(test_df: pd.DataFrame) -> pd.DataFrame:
     This utility function calculates positive rate among all tests conducted so far
     """
     rate_df = test_df.copy()
-    rate_df["pos_rate"] = (
-        rate_df["positive"] / (rate_df["positive"] + rate_df["negative"]) * 100
-    )
+    rate_df["pos_rate"] = rate_df["positive"] / (rate_df["totalTestResults"]) * 100
     rate_df_final = rate_df.pivot_table(
         index="date", columns="state", values="pos_rate"
     )
@@ -130,7 +128,7 @@ def normalize_testing(test_df: pd.DataFrame, pop_df: Dict[str, int]) -> pd.DataF
     return test_df_norm_by_pop
 
 
-raw_data = download_df("http://covidtracking.com/api/states/daily.csv")
+raw_data = download_df("https://api.covidtracking.com/v1/states/daily.csv")
 raw_testing = curr_test_ts_states(raw_data)
 us_populations = us_pop("./data/states_population.csv")
 norm_df = normalize_testing(raw_testing, us_populations)
